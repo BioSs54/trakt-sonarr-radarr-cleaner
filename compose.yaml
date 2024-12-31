@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    image: node:18-alpine  # Utilise l'image officielle Node.js (LTS version 18 sur Alpine Linux)
+    working_dir: /usr/src/app
+    volumes:
+      - ./:/usr/src/app  # Monte le projet actuel dans le conteneur
+      - /usr/src/app/node_modules  # Préserve les node_modules à l'intérieur du conteneur
+    command: sh -c 'npm install && npm run start'  # Commande pour démarrer le projet
+    ports:
+      - "3000:3000"  # Expose le port 3000 pour que l'application soit accessible depuis localhost
+    environment:
+      - NODE_ENV=development  # Définit l'environnement à "development"
+
+volumes:
+    dbdata:
+    node_modules:
