@@ -70,7 +70,8 @@ const log = {
 };
 
 // Planification du rafraîchissement des tokens
-cron.schedule("0 0 * * *", async () => {
+cron.schedule("0 0 * * 0", async () => {
+  // Exécute la tâche chaque dimanche à minuit
   log.info("Lancement du cron pour rafraîchissement des tokens...");
   try {
     const tokens = getStoredTokens();
@@ -82,6 +83,15 @@ cron.schedule("0 0 * * *", async () => {
     }
   } catch (error) {
     log.error(`Erreur lors du rafraîchissement des tokens : ${error.message}`);
+  }
+});
+
+cron.schedule("0 0 * * *", async () => {
+  log.info("Lancement du cron de nettoyage des médias...");
+  try {
+    await main();
+  } catch (error) {
+    log.error(`Erreur lors du nettoyage des médias : ${error.message}`);
   }
 });
 
