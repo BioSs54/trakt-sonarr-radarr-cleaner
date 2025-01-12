@@ -70,8 +70,8 @@ const log = {
 };
 
 // Planification du rafraîchissement des tokens
-cron.schedule("0 0 * * 0", async () => {
-  // Exécute la tâche chaque dimanche à minuit
+cron.schedule("0 0 */89 * *", async () => {
+  // Exécute la tâche tous les 89 jours à minuit
   log.info("Lancement du cron pour rafraîchissement des tokens...");
   try {
     const tokens = getStoredTokens();
