@@ -1,0 +1,33 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Vérifie le dépôt
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Connexion à Docker Hub
+    - name: Log in to Docker Hub
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    # Build de l'image Docker
+    - name: Build Docker Image
+      run: |
+        IMAGE_NAME="bioss/trakt-sonarr-radarr-cleaner"
+        TAG="${{ github.ref_name }}"
+        docker build -t "${IMAGE_NAME}:${TAG}" .
+
+    # Push de l'image Docker vers Docker Hub
+    - name: Push Docker Image to Docker Hub
+      run: |
+        IMAGE_NAME="bioss/trakt-sonarr-radarr-cleaner"
+        TAG="${{ github.ref_name }}"
+        docker push "${IMAGE_NAME}:${TAG}"
