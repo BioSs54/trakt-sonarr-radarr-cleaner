@@ -9,7 +9,7 @@ const {
 } = require("./tokenManager");
 const fs = require("fs");
 
-// Vérification des variables d'environnement nécessaires
+// Check that the required environment variables are present
 const requiredEnvVars = [
   "TRAKT_CLIENT_ID",
   "SONARR_API_KEY",
@@ -21,18 +21,18 @@ const requiredEnvVars = [
 ];
 requiredEnvVars.forEach((key) => {
   if (!process.env[key]) {
-    console.error(`❌ Variable d'environnement manquante : ${key}`);
+    console.error(`❌ Missing environment variable: ${key}`);
     process.exit(1);
   }
 });
 
-// Variables d'environnement
+// Environment variables
 const DEBUG = process.env.DEBUG === "true";
 const WATCHED_DAYS_THRESHOLD =
   parseInt(process.env.WATCHED_DAYS_THRESHOLD, 10) || 30;
 const MAX_DAYS_THRESHOLD = parseInt(process.env.MAX_DAYS_THRESHOLD, 10) || 90;
 
-// Couleurs pour les logs
+// Log colors for console output
 const colors = {
   reset: "\x1b[0m",
   red: "\x1b[31m",
@@ -42,10 +42,10 @@ const colors = {
   magenta: "\x1b[35m",
 };
 
-// Fonctions de log
+// Logging functions
 const log = {
   error: (message, ...args) =>
-    console.error(
+    console.error(`[${colors.red}❌ ERROR${colors.reset}] ${message}`, ...args),
       `[${colors.red}❌ ERREUR${colors.reset}] ${message}`,
       ...args
     ),
@@ -59,62 +59,63 @@ const log = {
     ),
   success: (message, ...args) =>
     console.log(
-      `[${colors.green}✅ SUCCÈS${colors.reset}] ${message}`,
+      `[${colors.green}✅ SUCCESS${colors.reset}] ${message}`,
       ...args
     ),
   warning: (message, ...args) =>
     console.warn(
-      `[${colors.yellow}⚠️ ATTENTION${colors.reset}] ${message}`,
+      `[${colors.yellow}⚠️ WARNING${colors.reset}] ${message}`,
       ...args
     ),
 };
 
-// Planification du rafraîchissement des tokens
-cron.schedule("0 0 */89 * *", async () => {
-  // Exécute la tâche tous les 89 jours à minuit
+// Schedule a cron job to refresh the access token every 3 months
+cron.schedule("0 0 1 */3 *", async () => {
+  log.info("Starting cron for token refresh...");
   log.info("Lancement du cron pour rafraîchissement des tokens...");
   try {
     const tokens = getStoredTokens();
     if (tokens?.refresh_token) {
       await refreshAccessToken(tokens.refresh_token);
-      log.success("Token d'accès rafraîchi avec succès.");
+      log.success("Access token successfully refreshed.");
     } else {
-      log.error("Token de rafraîchissement introuvable.");
+      log.error("Refresh token not found.");
     }
   } catch (error) {
-    log.error(`Erreur lors du rafraîchissement des tokens : ${error.message}`);
+    log.error(`Error during token refresh: ${error.message}`);
   }
 });
 
+// Schedule a daily cron job to clean up watched media
 cron.schedule("0 0 * * *", async () => {
-  log.info("Lancement du cron de nettoyage des médias...");
+  log.info("Starting cron for media cleanup...");
   try {
     await main();
   } catch (error) {
-    log.error(`Erreur lors du nettoyage des médias : ${error.message}`);
+    log.error(`Error during media cleanup: ${error.message}`);
   }
 });
 
-// Récupère les films et séries regardés depuis Trakt
+// Retrieve watched movies and series from Trakt
 async function getWatchedItems() {
   const tokens = getStoredTokens();
   if (!tokens?.access_token) {
     log.error(
-      `Token d'accès introuvable. Veuillez obtenir un nouveau token en executant le script npm run start`
+      `Access token not found. Please obtain a new token by running the script npm run start`
     );
     return [];
   }
 
   try {
-    // Calcule la date de début en fonction du seuil WATCHED_DAYS_THRESHOLD
+    // Calculate the start date based on the WATCHED_DAYS_THRESHOLD
     const startDate = dayjs().subtract(MAX_DAYS_THRESHOLD, "day").toISOString();
 
-    // Calcule la date de fin en fonction du seuil WATCHED_DAYS_THRESHOLD
+    // Calculate the end date based on the WATCHED_DAYS_THRESHOLD
     const endDate = dayjs()
       .subtract(WATCHED_DAYS_THRESHOLD, "day")
       .toISOString();
 
-    // Récupérer les séries regardées
+    // Retrieve watched series
     const watchedShows = await axios.get(
       `https://api.trakt.tv/users/me/watched/shows`,
       {
@@ -126,7 +127,7 @@ async function getWatchedItems() {
       }
     );
 
-    // Récupérer les films regardés
+    // Retrieve watched movies
     const watchedMovies = await axios.get(
       `https://api.trakt.tv/users/me/watched/movies`,
       {
@@ -146,14 +147,14 @@ async function getWatchedItems() {
       );
     });
   } catch (error) {
-    log.error(
+    log.error(`Error while retrieving watched items: ${error.message}`);
       `Erreur lors de la récupération des éléments regardés : ${error.message}`
     );
     return [];
   }
 }
 
-// Vérifie si le média est tagué "temp" sur Sonarr/Radarr
+// Check if the media is tagged as "temp" in Sonarr/Radarr
 async function isTempTagged(
   serviceUrl,
   apiKey,
@@ -186,23 +187,23 @@ async function isTempTagged(
         : data[0]?.tags?.includes(tempTagId);
 
     if (!data || data?.length === 0) {
-      log.debug(`${title} ${colors.yellow}non trouvé${colors.reset}.`);
+      log.debug(`${title} ${colors.yellow}not found${colors.reset}.`);
     } else if (data && data.length > 0 && !isTagged) {
       log.debug(
-        `${title} n'est pas tagué "temp", ${colors.green}conservé${colors.reset}.`
+        `${title} is not tagged "temp", ${colors.green}kept${colors.reset}.`
       );
     }
 
     return isTagged;
   } catch (error) {
     log.debug(
-      `Tag "temp" pour ${title} (#${mediaId}) introuvable : ${error.message}`
+      `Tag "temp" for ${title} (#${mediaId}) not found: ${error.message}`
     );
     return false;
   }
 }
 
-// Supprime un média de Sonarr/Radarr avec options deleteFiles et addImportExclusion
+// Function to delete media from Sonarr/Radarr with options deleteFiles and addImportExclusion
 async function deleteFromService(
   serviceUrl,
   apiKey,
@@ -220,9 +221,9 @@ async function deleteFromService(
       );
 
       if (mediaInfo.status.toLowerCase() === "ended") {
-        // Supprimer toute la série si elle est terminée
+        // Delete the entire series if it has ended
         log.info(
-          `${colors.red}Suppression${colors.reset} de la série complète : ${mediaInfo.title} (terminée)`
+          `${colors.red}Deleting${colors.reset} the entire series: ${mediaInfo.title} (ended)`
         );
         if (process.env.DRY_RUN !== "true") {
           await axios
@@ -233,13 +234,13 @@ async function deleteFromService(
               }
             )
             .then(() => {
-              log.success(
+              log.success(`Series ${mediaInfo.title} deleted, files removed.`);
                 `Série ${mediaInfo.title} supprimée, fichiers supprimés.`
               );
             });
         }
       } else {
-        // Supprimer uniquement les saisons regardées
+        // Delete only the watched seasons
         for (const season of media.seasons) {
           const episodesInSeason = episodes.data.filter(
             (e) => e.seasonNumber === season.number && e.hasFile
@@ -251,7 +252,7 @@ async function deleteFromService(
 
           if (episodesInSeason.length === watchedEpisodes.size) {
             log.info(
-              `${colors.red}Suppression${colors.reset} de la saison complète : ${mediaInfo.title} - Saison ${season.number}`
+              `${colors.red}Deleting${colors.reset} entire season: ${mediaInfo.title} - Season ${season.number}`
             );
             for (const episode of episodesInSeason) {
               if (process.env.DRY_RUN !== "true") {
@@ -263,11 +264,11 @@ async function deleteFromService(
                     }
                   )
                   .then(() => {
-                    log.success(`Épisode ${episode.title} supprimé.`);
+                    log.success(`Episode ${episode.title} deleted.`);
                   })
                   .catch((error) => {
                     log.error(
-                      `Erreur lors de la suppression de l'épisode ${episode.title} (#FileId: ${episode.episodeFileId}) : ${error.message}`
+                      `Error deleting episode ${episode.title} (#FileId: ${episode.episodeFileId}): ${error.message}`
                     );
                   });
               }
@@ -276,7 +277,7 @@ async function deleteFromService(
         }
       }
     } else {
-      log.info(`Suppression du film : ${mediaInfo.title}`);
+      log.info(`Deleting the movie: ${mediaInfo.title}`);
       if (process.env.DRY_RUN !== "true") {
         await axios
           .delete(
@@ -286,23 +287,23 @@ async function deleteFromService(
             }
           )
           .then(() => {
-            log.success(`Film ${mediaInfo.title} supprimé.`);
+            log.success(`Movie ${mediaInfo.title} deleted.`);
           })
           .catch((error) => {
             log.error(
-              `Erreur lors de la suppression du film ${mediaInfo.title} : ${error.message}`
+              `Error deleting the movie ${mediaInfo.title}: ${error.message}`
             );
           });
       }
     }
   } catch (error) {
-    log.error(
+    log.error(`Error deleting media ${mediaInfo.title}: ${error.message}`);
       `Erreur lors de la suppression du média ${mediaInfo.title} : ${error.message}`
     );
   }
 }
 
-// Met à jour le monitoring de la série pour les futurs épisodes
+// Updates the monitoring for the series to include future episodes
 async function updateSeriesMonitoring(serviceUrl, apiKey, tvdbId) {
   const series = await axios.get(
     `${serviceUrl}/api/v3/series/lookup?term=tvdb:${tvdbId}`,
@@ -313,7 +314,7 @@ async function updateSeriesMonitoring(serviceUrl, apiKey, tvdbId) {
 
   if (!series.data[0]?.id) {
     log.error(
-      `Impossible de mettre à jour le monitoring pour la série ${series.data[0].title} avec TVDB ID ${tvdbId}.`
+      `Unable to update monitoring for the series ${series.data[0].title} with TVDB ID ${tvdbId}.`
     );
     return;
   }
@@ -334,12 +335,12 @@ async function updateSeriesMonitoring(serviceUrl, apiKey, tvdbId) {
   );
 
   log.info(
-    `Monitoring de la série ${series.data[0].title} avec ID ${series.data[0].id} mis à jour pour les futurs épisodes.`
+    `Monitoring updated for series ${series.data[0].title} with ID ${series.data[0].id} to include future episodes.`
   );
   return response.data;
 }
 
-// Vérifie et supprime les médias non tagués "temp"
+// Checks and deletes media not tagged as "temp"
 async function cleanMedia() {
   const watchedItems = await getWatchedItems();
 
@@ -383,7 +384,7 @@ async function cleanMedia() {
             );
 
             if (episodesInSeason.length === watchedEpisodes.size) {
-              // Suppression des épisodes visionnés
+              // Deleting watched episodes
               await deleteFromService(
                 serviceUrl,
                 apiKey,
@@ -391,7 +392,7 @@ async function cleanMedia() {
                 seriesInfo.data[0],
                 item
               );
-              // Mise à jour du monitoring de la série pour les futurs épisodes
+              // Updating series monitoring for future episodes
 
               if (process.env.DRY_RUN !== "true") {
                 await updateSeriesMonitoring(serviceUrl, apiKey, id);
@@ -399,7 +400,7 @@ async function cleanMedia() {
             }
           }
         } else {
-          log.info(
+          log.info(`${colors.red}Deleting${colors.reset} the movie: ${title}`);
             `${colors.red}Suppression${colors.reset} du film : ${title}`
           );
 
@@ -410,7 +411,7 @@ async function cleanMedia() {
             }
           );
 
-          // Suppression des films visionnés
+          // Deleting watched movies
           await deleteFromService(
             serviceUrl,
             apiKey,
@@ -420,25 +421,25 @@ async function cleanMedia() {
         }
       }
     } catch (error) {
-      log.error(`Erreur lors de la suppression de ${title} : ${error.message}`);
+      log.error(`Error deleting ${title}: ${error.message}`);
     }
   }
 }
 
-// Fonction principale
+// Main function
 async function main() {
   try {
     if (process.env.DRY_RUN !== "true") {
-      log.warning("Mode dry-run désactivé, suppression des médias activée.");
+      log.warning("Dry-run mode disabled, media deletion enabled.");
     } else {
-      log.warning("Mode dry-run activé, suppression des médias désactivée.");
+      log.warning("Dry-run mode enabled, media deletion disabled.");
     }
     await cleanMedia();
-    log.info(
+    log.info("Media cleaning completed, resuming scheduling tomorrow.");
       "Nettoyage des médias terminé, reprise de la planification dès demain."
     );
   } catch (error) {
-    log.error(`Erreur dans l'exécution principale : ${error.message}`);
+    log.error(`Error in main execution: ${error.message}`);
   }
 }
 
