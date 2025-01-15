@@ -26,9 +26,32 @@ jobs:
         TAG="${{ github.ref_name }}"
         docker build -t "${IMAGE_NAME}:${TAG}" .
 
-    # Push de l'image Docker vers Docker Hub
+    - name: Extract Tag Versions
+      id: extract_tag
+      run: |
+        TAG="${{ github.ref_name }}"
+        if [[ "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+          echo "major=v${BASH_REMATCH[1]}" >> $GITHUB_ENV
+          echo "minor=v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}" >> $GITHUB_ENV
+          echo "patch=$TAG" >> $GITHUB_ENV
+          echo "latest=latest" >> $GITHUB_ENV
+        else
+          echo "Error: Tag does not match semantic versioning (vX.Y.Z)" >&2
+          exit 1
+        fi
+
+    - name: Build Docker Image
+      run: |
+        IMAGE_NAME="bioss/trakt-sonarr-radarr-cleaner"
+        docker build -t "${IMAGE_NAME}:${major}" \
+                     -t "${IMAGE_NAME}:${minor}" \
+                     -t "${IMAGE_NAME}:${patch}" \
+                     -t "${IMAGE_NAME}:latest" .
+
     - name: Push Docker Image to Docker Hub
       run: |
         IMAGE_NAME="bioss/trakt-sonarr-radarr-cleaner"
-        TAG="${{ github.ref_name }}"
-        docker push "${IMAGE_NAME}:${TAG}"
+        docker push "${IMAGE_NAME}:${major}"
+        docker push "${IMAGE_NAME}:${minor}"
+        docker push "${IMAGE_NAME}:${patch}"
+        docker push "${IMAGE_NAME}:latest"
