@@ -39,12 +39,19 @@ Before starting, make sure you have the following installed:
 4. Fill in the .env file with the following information:
 
    ```
+   DEBUG=true
+   DRY_RUN=true
    TRAKT_CLIENT_ID=your_trakt_client_id
    TRAKT_CLIENT_SECRET=your_trakt_client_secret
+   TRAKT_REDIRECT_URI=urn:ietf:wg:oauth:2.0:oob
    SONARR_API_KEY=your_sonarr_api_key
    RADARR_API_KEY=your_radarr_api_key
+   TEMP_TAG_ID_RADARR=X
+   TEMP_TAG_ID_SONARR=X
    SONARR_URL=http://localhost:8989
    RADARR_URL=http://localhost:7878
+   WATCHED_DAYS_THRESHOLD=30
+   MAX_DAYS_THRESHOLD=90
    ```
 
    - **DEBUG**: Enable debug mode.
@@ -152,12 +159,19 @@ Avant de commencer, assure-toi d'avoir les éléments suivants installés :
 4. Remplis le fichier `.env` avec les informations suivantes :
 
    ```
-   TRAKT_CLIENT_ID=ton_client_id_trakt
-   TRAKT_CLIENT_SECRET=ton_client_secret_trakt
-   SONARR_API_KEY=ton_api_key_sonarr
-   RADARR_API_KEY=ton_api_key_radarr
+   DEBUG=true
+   DRY_RUN=true
+   TRAKT_CLIENT_ID=your_trakt_client_id
+   TRAKT_CLIENT_SECRET=your_trakt_client_secret
+   TRAKT_REDIRECT_URI=urn:ietf:wg:oauth:2.0:oob
+   SONARR_API_KEY=your_sonarr_api_key
+   RADARR_API_KEY=your_radarr_api_key
+   TEMP_TAG_ID_RADARR=X
+   TEMP_TAG_ID_SONARR=X
    SONARR_URL=http://localhost:8989
    RADARR_URL=http://localhost:7878
+   WATCHED_DAYS_THRESHOLD=30
+   MAX_DAYS_THRESHOLD=90
    ```
 
    - **DEBUG** : Active le mode débug.
