@@ -19,6 +19,7 @@ const requiredEnvVars = [
   "TEMP_TAG_ID_RADARR",
   "TEMP_TAG_ID_SONARR",
 ];
+
 requiredEnvVars.forEach((key) => {
   if (!process.env[key]) {
     console.error(`❌ Missing environment variable: ${key}`);
@@ -69,10 +70,9 @@ const log = {
     ),
 };
 
-// Schedule a cron job to refresh the access token every 3 months
-cron.schedule("0 0 1 */3 *", async () => {
+// Schedule a cron job to refresh the access token every day
+cron.schedule("50 23 * * *", async () => {
   log.info("Starting cron for token refresh...");
-  log.info("Lancement du cron pour rafraîchissement des tokens...");
   try {
     const tokens = getStoredTokens();
     if (tokens?.refresh_token) {
@@ -393,7 +393,6 @@ async function cleanMedia() {
                 item
               );
               // Updating series monitoring for future episodes
-
               if (process.env.DRY_RUN !== "true") {
                 await updateSeriesMonitoring(serviceUrl, apiKey, id);
               }
@@ -436,8 +435,6 @@ async function main() {
     }
     await cleanMedia();
     log.info("Media cleaning completed, resuming scheduling tomorrow.");
-      "Nettoyage des médias terminé, reprise de la planification dès demain."
-    );
   } catch (error) {
     log.error(`Error in main execution: ${error.message}`);
   }
